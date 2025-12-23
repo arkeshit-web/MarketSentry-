@@ -5,12 +5,14 @@ import SkeletonCard from '../components/SkeletonCard';
 import SmartSearch from '../components/SmartSearch';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const rawBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = rawBaseUrl.replace(/\/$/, "");
 
 const Dashboard = () => {
     const [stocks, setStocks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [debugInfo, setDebugInfo] = useState(null);
 
     const [topBuys, setTopBuys] = useState([]);
     const [topSells, setTopSells] = useState([]);
@@ -68,12 +70,14 @@ const Dashboard = () => {
                     setCount(response.data.length);
                 }
                 if (isInitial) setLoading(false);
+                setError(null);
             })
             .catch(err => {
                 console.error("Failed to fetch stocks:", err);
                 // Only show error on full failure, maybe toast on poll fail?
                 if (isInitial) {
-                    setError("Failed to load market data. Ensure backend is running.");
+                    setError(`Failed to load market data: ${err.message}`);
+                    setDebugInfo(`Target: ${API_URL}`);
                     setLoading(false);
                 }
             });
@@ -132,7 +136,8 @@ const Dashboard = () => {
             ) : error ? (
                 <div className="text-center py-12">
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">System Offline</h2>
-                    <p className="text-red-500">{error}</p>
+                    <p className="text-red-500 mb-2">{error}</p>
+                    {debugInfo && <p className="text-xs text-gray-400 font-mono tracking-wide">{debugInfo}</p>}
                 </div>
             ) : (
                 <>
