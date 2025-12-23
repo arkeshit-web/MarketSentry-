@@ -27,13 +27,7 @@ services:
     plan: free
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: "./frontend/dist"
-    envVars:
-      # Link Frontend to Backend URL automagically
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: marketsentry-backend
-          property: url
+    # User must set VITE_API_URL manually in Render Dashboard to the Backend URL
 
 databases:
   - name: marketsentry-db
