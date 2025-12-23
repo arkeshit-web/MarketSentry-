@@ -6,6 +6,8 @@ import StockChart from '../components/StockChart';
 import HealthBadge from '../components/HealthBadge';
 import NewsList from '../components/NewsList';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 const StockDetail = () => {
     const { ticker } = useParams();
     const [stock, setStock] = useState(null);
@@ -14,7 +16,7 @@ const StockDetail = () => {
     useEffect(() => {
         const fetchStockData = async (isInitial = true) => {
             try {
-                const response = await axios.get(`http://127.0.0.1:8000/api/stocks/${ticker}/`);
+                const response = await axios.get(`${API_BASE_URL}/api/stocks/${ticker}/`);
                 setStock(response.data);
                 if (isInitial) setLoading(false);
             } catch (error) {

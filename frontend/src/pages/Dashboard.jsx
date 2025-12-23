@@ -5,6 +5,8 @@ import SkeletonCard from '../components/SkeletonCard';
 import SmartSearch from '../components/SmartSearch';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 const Dashboard = () => {
     const [stocks, setStocks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -38,19 +40,19 @@ const Dashboard = () => {
 
     const fetchTopMovers = () => {
         // Top 4 Buys (highest health_score)
-        axios.get('http://127.0.0.1:8000/api/stocks/?ordering=-health_score&page_size=4')
+        axios.get(`${API_BASE_URL}/api/stocks/?ordering=-health_score&page_size=4`)
             .then(res => setTopBuys(res.data.results || []))
             .catch(err => console.error("Failed to fetch top buys:", err));
 
         // Top 4 Sells (lowest health_score)
-        axios.get('http://127.0.0.1:8000/api/stocks/?ordering=health_score&page_size=4')
+        axios.get(`${API_BASE_URL}/api/stocks/?ordering=health_score&page_size=4`)
             .then(res => setTopSells(res.data.results || []))
             .catch(err => console.error("Failed to fetch top sells:", err));
     };
 
     const fetchStocks = (isInitial) => {
         if (isInitial) setLoading(true);
-        const API_URL = `http://127.0.0.1:8000/api/stocks/?page=${page}&search=${searchTerm}`;
+        const API_URL = `${API_BASE_URL}/api/stocks/?page=${page}&search=${searchTerm}`;
 
         axios.get(API_URL)
             .then(response => {

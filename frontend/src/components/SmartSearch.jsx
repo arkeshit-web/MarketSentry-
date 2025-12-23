@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import clsx from 'clsx';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 const SmartSearch = () => {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
@@ -32,7 +34,7 @@ const SmartSearch = () => {
             setLoading(true);
             try {
                 // Using existing search API
-                const res = await axios.get(`http://127.0.0.1:8000/api/stocks/?search=${query}`);
+                const res = await axios.get(`${API_BASE_URL}/api/stocks/?search=${query}`);
                 // API paginates, so results are in res.data.results
                 setResults(res.data.results || []);
                 setIsOpen(true);

@@ -1,0 +1,42 @@
+services:
+  # Backend (Django)
+  - type: web
+    name: marketsentry-backend
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn marketsentry.wsgi:application"
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*" # Allow all for initial setup, restrict later
+      - key: DATABASE_URL
+        fromDatabase:
+          name: marketsentry-db
+          property: connectionString
+
+  # Frontend (React)
+  - type: static
+    name: marketsentry-frontend
+    env: static
+    plan: free
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: "./frontend/dist"
+    envVars:
+      # Link Frontend to Backend URL automagically
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: marketsentry-backend
+          property: url
+
+databases:
+  - name: marketsentry-db
+    databaseName: marketsentry
+    user: marketsentry
+    plan: free
