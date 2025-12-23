@@ -84,3 +84,17 @@ def compare_stocks(request):
         "stock1": s1_data,
         "stock2": s2_data
     })
+
+from django.core.management import call_command
+
+@api_view(['GET'])
+def ingest_data_view(request):
+    """
+    Trigger data ingestion manually via URL.
+    This is a workaround for lack of Shell access on free hosting.
+    """
+    try:
+        call_command('ingest_data')
+        return Response({"status": "Data ingestion complete. Check Dashboard."})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
