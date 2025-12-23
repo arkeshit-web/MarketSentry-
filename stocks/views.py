@@ -94,7 +94,12 @@ def ingest_data_view(request):
     This is a workaround for lack of Shell access on free hosting.
     """
     try:
-        call_command('ingest_data')
+        limit = request.query_params.get('limit')
+        if limit:
+            call_command('ingest_data', limit=int(limit))
+        else:
+            call_command('ingest_data')
+            
         return Response({"status": "Data ingestion complete. Check Dashboard."})
     except Exception as e:
         return Response({"error": str(e)}, status=500)

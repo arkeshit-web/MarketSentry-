@@ -8,9 +8,12 @@ from datetime import datetime
 class Command(BaseCommand):
     help = 'Ingests data for NIFTY 50 stocks'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--limit', type=int, help='Limit number of stocks to ingest')
+
     def handle(self, *args, **kwargs):
         # Expanded NIFTY 100 List (Top 100 by Market Cap)
-        tickers = [
+        all_tickers = [
             "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "BHARTIARTL.NS", "ITC.NS", "SBIN.NS", "LICI.NS", "HINDUNILVR.NS",
             "KOTAKBANK.NS", "LT.NS", "AXISBANK.NS", "HCLTECH.NS", "BAJFINANCE.NS", "ADANIENT.NS", "SUNPHARMA.NS", "MARUTE.NS", "TITAN.NS", "TATAMOTORS.NS",
             "ULTRACEMCO.NS", "ASIANPAINT.NS", "NTPC.NS", "BAJAJFINSV.NS", "POWERGRID.NS", "ONGC.NS", "M&M.NS", "TATASTEEL.NS", "ADANIGREEN.NS", "JSWSTEEL.NS",
@@ -22,6 +25,9 @@ class Command(BaseCommand):
             "JSWENERGY.NS", "IRFC.NS", "ICICIPRULI.NS", "SBICARD.NS", "CUMMINSIND.NS", "MARICO.NS", "JINDALSTEL.NS", "BOSCHLTD.NS", "SRF.NS", "BERGEPAINT.NS",
             "COLPAL.NS", "ICICIGI.NS", "TIINDIA.NS", "ALEMBICLTD.NS", "MUTHOOTFIN.NS", "OBEROIRLTY.NS", "ALKEM.NS", "PIIND.NS", "PATANJALI.NS", "UNIONBANK.NS"
         ]
+
+        limit = kwargs.get('limit')
+        tickers = all_tickers[:limit] if limit else all_tickers
 
         for ticker_symbol in tickers:
             self.stdout.write(f"Fetching data for {ticker_symbol}...")
