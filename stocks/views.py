@@ -95,11 +95,14 @@ def ingest_data_view(request):
     """
     try:
         limit = request.query_params.get('limit')
-        if limit:
-            call_command('ingest_data', limit=int(limit))
-        else:
-            call_command('ingest_data')
+        offset = request.query_params.get('offset')
+        
+        kwargs = {}
+        if limit: kwargs['limit'] = int(limit)
+        if offset: kwargs['offset'] = int(offset)
+        
+        call_command('ingest_data', **kwargs)
             
-        return Response({"status": "Data ingestion complete. Check Dashboard."})
+        return Response({"status": f"Data ingestion complete. Processed batch starting at {offset or 0}."})
     except Exception as e:
         return Response({"error": str(e)}, status=500)

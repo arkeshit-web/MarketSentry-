@@ -10,6 +10,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--limit', type=int, help='Limit number of stocks to ingest')
+        parser.add_argument('--offset', type=int, help='Offset to start ingestion from')
 
     def handle(self, *args, **kwargs):
         # Expanded NIFTY 100 List (Top 100 by Market Cap)
@@ -27,7 +28,12 @@ class Command(BaseCommand):
         ]
 
         limit = kwargs.get('limit')
-        tickers = all_tickers[:limit] if limit else all_tickers
+        offset = kwargs.get('offset') or 0
+        
+        if limit:
+            tickers = all_tickers[offset : offset + limit]
+        else:
+            tickers = all_tickers[offset:]
 
         for ticker_symbol in tickers:
             self.stdout.write(f"Fetching data for {ticker_symbol}...")
