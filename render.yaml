@@ -21,7 +21,7 @@ services:
           property: connectionString
 
   # Frontend (React)
-  - type: static
+  - type: web
     name: marketsentry-frontend
     env: static
     plan: free
