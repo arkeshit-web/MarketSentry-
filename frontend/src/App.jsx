@@ -13,6 +13,7 @@ export default function App() {
   
   const [selectedTicker, setSelectedTicker] = useState(null);
   const [selectedStockDetail, setSelectedStockDetail] = useState(null);
+  const [intradayData, setIntradayData] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState(null);
 
@@ -87,6 +88,33 @@ export default function App() {
     }
     return () => clearInterval(timer);
   }, [syncStatus.is_syncing]);
+
+  // Fetch Intraday 1-day prices
+  const fetchIntraday = async (ticker) => {
+    try {
+      const res = await fetch(`${API_BASE}/stocks/${ticker}/intraday`);
+      if (res.ok) {
+        const data = await res.json();
+        setIntradayData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch intraday data:", err);
+    }
+  };
+
+  // Poll Intraday data every 30 seconds when a stock page is open
+  useEffect(() => {
+    let timer;
+    if (selectedTicker) {
+      fetchIntraday(selectedTicker);
+      timer = setInterval(() => {
+        fetchIntraday(selectedTicker);
+      }, 30000); // 30 seconds
+    } else {
+      setIntradayData(null);
+    }
+    return () => clearInterval(timer);
+  }, [selectedTicker]);
 
   // Handle stock click
   const selectStock = async (ticker) => {
@@ -176,6 +204,7 @@ export default function App() {
             price={selectedStockDetail.price}
             changePct={selectedStockDetail.change_pct}
             detail={selectedStockDetail}
+            intradayData={intradayData}
             onBack={() => { setSelectedStockDetail(null); setSelectedTicker(null); fetchStocks(); }}
           />
         ) : (

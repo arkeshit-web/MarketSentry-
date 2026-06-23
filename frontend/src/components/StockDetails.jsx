@@ -21,8 +21,11 @@ const formatToIST = (dateStr) => {
   }
 };
 
-export default function StockDetails({ ticker, name, price, changePct, detail, onBack }) {
+export default function StockDetails({ ticker, name, price, changePct, detail, intradayData, onBack }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [activeTab, setActiveTab] = useState('intraday');
+  const [showNeutralNews, setShowNeutralNews] = useState(false);
+  const [hoveredIntradayPoint, setHoveredIntradayPoint] = useState(null);
 
   if (!detail || !detail.detailed) {
     return (
@@ -251,6 +254,209 @@ export default function StockDetails({ ticker, name, price, changePct, detail, o
     );
   };
 
+  // Render SVG Area Chart for Intraday price history
+  const renderIntradayChart = () => {
+    if (!intradayData || !intradayData.prices || intradayData.prices.length < 2) {
+      return (
+        <div style={{ height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', gap: 10 }}>
+          <Activity className="animate-spin" size={24} style={{ color: 'var(--color-accent)' }} />
+          <span style={{ fontSize: '0.85rem' }}>Awaiting Intraday Stream ticks...</span>
+        </div>
+      );
+    }
+    
+    const prices = intradayData.prices;
+    const times = intradayData.times;
+    
+    const width = 600;
+    const height = 200;
+    const paddingLeft = 60;
+    const paddingRight = 20;
+    const paddingTop = 20;
+    const paddingBottom = 30;
+    
+    const minVal = Math.min(...prices);
+    const maxVal = Math.max(...prices);
+    const valRange = maxVal - minVal === 0 ? 1 : maxVal - minVal;
+    
+    const minChartVal = minVal - valRange * 0.05;
+    const maxChartVal = maxVal + valRange * 0.05;
+    const chartRange = maxChartVal - minChartVal;
+
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+    
+    const points = prices.map((val, idx) => {
+      const x = paddingLeft + (idx / (prices.length - 1)) * chartWidth;
+      const y = paddingTop + ((maxChartVal - val) / chartRange) * chartHeight;
+      return { x, y, val, time: times[idx] || '' };
+    });
+    
+    const pathD = points.reduce((acc, pt, idx) => {
+      return acc + (idx === 0 ? `M ${pt.x} ${pt.y}` : ` L ${pt.x} ${pt.y}`);
+    }, "");
+
+    const fillD = `${pathD} L ${width - paddingRight} ${height - paddingBottom} L ${paddingLeft} ${height - paddingBottom} Z`;
+    
+    const strokeColor = intradayData.is_up ? 'var(--color-bullish)' : 'var(--color-bearish)';
+    const gradId = 'intraday-chart-grad';
+
+    // Generates Y axis gridlines and labels (3 lines)
+    const yGrid = [0.1, 0.5, 0.9].map(ratio => {
+      const val = maxChartVal - ratio * chartRange;
+      const y = paddingTop + ratio * chartHeight;
+      return { y, val };
+    });
+
+    return (
+      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        
+        {/* Y Axis Gridlines and Labels */}
+        {yGrid.map((grid, i) => (
+          <g key={i}>
+            <line 
+              x1={paddingLeft} 
+              y1={grid.y} 
+              x2={width - paddingRight} 
+              y2={grid.y} 
+              stroke="rgba(255,255,255,0.04)" 
+              strokeDasharray="4 4"
+            />
+            <text 
+              x={paddingLeft - 10} 
+              y={grid.y + 4} 
+              fill="var(--color-text-muted)" 
+              fontSize="10" 
+              fontWeight="600"
+              textAnchor="end"
+            >
+              {grid.val.toFixed(2)}
+            </text>
+          </g>
+        ))}
+
+        {/* X Axis Border Line */}
+        <line 
+          x1={paddingLeft} 
+          y1={height - paddingBottom} 
+          x2={width - paddingRight} 
+          y2={height - paddingBottom} 
+          stroke="rgba(255,255,255,0.08)"
+        />
+        
+        {/* Date Labels (Start and End) */}
+        {points.length > 0 && (
+          <>
+            <text x={paddingLeft} y={height - 12} fill="var(--color-text-muted)" fontSize="10" fontWeight="600" textAnchor="start">
+              {points[0].time}
+            </text>
+            <text x={width - paddingRight} y={height - 12} fill="var(--color-text-muted)" fontSize="10" fontWeight="600" textAnchor="end">
+              {points[points.length - 1].time}
+            </text>
+          </>
+        )}
+
+        {/* Gradient Fill under Path */}
+        <path d={fillD} fill={`url(#${gradId})`} />
+        
+        {/* Price Line */}
+        <path 
+          d={pathD} 
+          fill="none" 
+          stroke={strokeColor} 
+          strokeWidth="2.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+        />
+        
+        {/* Hover Dotted Guide Line */}
+        {hoveredIntradayPoint && (
+          <line
+            x1={hoveredIntradayPoint.x}
+            y1={paddingTop}
+            x2={hoveredIntradayPoint.x}
+            y2={height - paddingBottom}
+            stroke="var(--color-accent)"
+            strokeWidth="1"
+            strokeDasharray="3 3"
+          />
+        )}
+        
+        {/* Active Point Highlight Circle */}
+        <circle 
+          cx={hoveredIntradayPoint ? hoveredIntradayPoint.x : points[points.length - 1].x} 
+          cy={hoveredIntradayPoint ? hoveredIntradayPoint.y : points[points.length - 1].y} 
+          r={hoveredIntradayPoint ? "5" : "4"} 
+          fill={hoveredIntradayPoint ? "var(--color-accent)" : strokeColor} 
+          stroke="#fff" 
+          strokeWidth="1.5"
+        />
+
+        {/* Floating Tooltip Box */}
+        {hoveredIntradayPoint && (
+          <g>
+            <rect
+              x={Math.max(paddingLeft, Math.min(hoveredIntradayPoint.x - 70, width - paddingRight - 140))}
+              y={paddingTop - 12 >= 5 ? paddingTop - 12 : 5}
+              width="140"
+              height="38"
+              rx="6"
+              fill="rgba(10, 15, 29, 0.95)"
+              stroke="var(--color-accent)"
+              strokeWidth="1"
+              style={{ filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))' }}
+            />
+            <text
+              x={Math.max(paddingLeft, Math.min(hoveredIntradayPoint.x - 70, width - paddingRight - 140)) + 70}
+              y={(paddingTop - 12 >= 5 ? paddingTop - 12 : 5) + 14}
+              fill="#fff"
+              fontSize="10"
+              fontWeight="700"
+              textAnchor="middle"
+            >
+              ₹{hoveredIntradayPoint.val.toFixed(2)}
+            </text>
+            <text
+              x={Math.max(paddingLeft, Math.min(hoveredIntradayPoint.x - 70, width - paddingRight - 140)) + 70}
+              y={(paddingTop - 12 >= 5 ? paddingTop - 12 : 5) + 27}
+              fill="var(--color-text-secondary)"
+              fontSize="8"
+              fontWeight="600"
+              textAnchor="middle"
+            >
+              {hoveredIntradayPoint.time}
+            </text>
+          </g>
+        )}
+
+        {/* Hover Rectangles (Captures hover zone for each data point) */}
+        {points.map((pt, idx) => {
+          const sliceWidth = chartWidth / (points.length - 1);
+          return (
+            <rect
+              key={idx}
+              x={pt.x - sliceWidth / 2}
+              y={paddingTop}
+              width={sliceWidth}
+              height={chartHeight}
+              fill="transparent"
+              style={{ cursor: 'crosshair' }}
+              onMouseEnter={() => setHoveredIntradayPoint(pt)}
+              onMouseMove={() => setHoveredIntradayPoint(pt)}
+              onMouseLeave={() => setHoveredIntradayPoint(null)}
+            />
+          );
+        })}
+      </svg>
+    );
+  };
+
   return (
     <div className="animate-slide-up" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px 80px 20px' }}>
       
@@ -413,14 +619,53 @@ export default function StockDetails({ ticker, name, price, changePct, detail, o
 
       {/* Volatility & Historical Price Chart Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
-        {/* Historical Price Chart */}
+        {/* Tabbed Price Charts (Intraday Live vs Historical) */}
         <div className="glass-panel" style={{ padding: 24, gridColumn: 'span 2' }}>
-          <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Activity size={18} style={{ color: 'var(--color-accent)' }} />
-            30-Trading-Day Closing Price Chart
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Activity size={18} style={{ color: 'var(--color-accent)' }} />
+              Price Stream Chart
+            </h3>
+            
+            {/* Chart Tab Selector */}
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: 3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <button 
+                onClick={() => setActiveTab('intraday')}
+                style={{ 
+                  background: activeTab === 'intraday' ? 'var(--color-accent)' : 'transparent',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                Intraday (Live)
+              </button>
+              <button 
+                onClick={() => setActiveTab('historical')}
+                style={{ 
+                  background: activeTab === 'historical' ? 'var(--color-accent)' : 'transparent',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                30-Day Historical
+              </button>
+            </div>
+          </div>
+          
           <div style={{ height: 200, width: '100%' }}>
-            {renderHistoryChart()}
+            {activeTab === 'intraday' ? renderIntradayChart() : renderHistoryChart()}
           </div>
         </div>
 
@@ -480,15 +725,41 @@ export default function StockDetails({ ticker, name, price, changePct, detail, o
 
       {/* 4. News Sentiment & Scraping Module */}
       <div className="glass-panel" style={{ padding: 24, marginBottom: 40 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 10 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
           <div>
             <h3 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageSquare size={20} style={{ color: 'var(--color-accent)' }} />
               News Sentiment Stream
             </h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginTop: 4 }}>
-              Active NLP Model: <strong style={{ color: 'var(--color-accent)' }}>{sent.engine}</strong>
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                Active NLP Model: <strong style={{ color: 'var(--color-accent)' }}>{sent.engine}</strong>
+              </p>
+              <div style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.15)' }}></div>
+              {/* Neutral news toggle switch */}
+              <label style={{ 
+                fontSize: '0.8rem', 
+                color: 'var(--color-text-secondary)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6, 
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={showNeutralNews} 
+                  onChange={(e) => setShowNeutralNews(e.target.checked)}
+                  style={{ 
+                    cursor: 'pointer', 
+                    accentColor: 'var(--color-accent)',
+                    width: 13,
+                    height: 13
+                  }}
+                />
+                Include Neutral News
+              </label>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
@@ -510,8 +781,8 @@ export default function StockDetails({ ticker, name, price, changePct, detail, o
 
         {/* News Feed Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 16 }}>
-          {news.length > 0 ? (
-            news.map((item, i) => (
+          {news.filter(item => showNeutralNews || item.label !== 'Neutral').length > 0 ? (
+            news.filter(item => showNeutralNews || item.label !== 'Neutral').map((item, i) => (
               <a 
                 key={i} 
                 href={item.link} 
@@ -565,6 +836,31 @@ export default function StockDetails({ ticker, name, price, changePct, detail, o
           )}
         </div>
       </div>
+
+      {/* footer branding */}
+      <footer style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '40px 0 20px 0',
+        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        gap: 12,
+        marginTop: 40
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="designer-text">MarketSentry 2.0</span>
+          <div style={{ width: 1, height: 16, background: 'rgba(255, 255, 255, 0.15)' }}></div>
+          <span className="designer-text">Trading Intelligence Engine</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+          <span className="designer-text" style={{ fontSize: '1rem', opacity: 0.8 }}>Designed by</span>
+          <span className="designer-name">Arkesh Baidya</span>
+        </div>
+        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8, letterSpacing: '0.05em' }}>
+          &copy; {new Date().getFullYear()} MarketSentry. All intellectual property rights reserved.
+        </span>
+      </footer>
 
       <style>{`
         .news-card:hover {

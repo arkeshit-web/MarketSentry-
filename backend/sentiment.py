@@ -142,9 +142,13 @@ def analyze_headline_sentiment(headline):
     score = lexical_sentiment_score(headline)
     return score, "Lexicon-Based"
 
-def scrape_stock_news(ticker_name, ticker_symbol, limit=8):
+from email.utils import parsedate_to_datetime
+import datetime
+
+def scrape_stock_news(ticker_name, ticker_symbol, limit=12):
     """
-    Scrapes Google News RSS for stock headlines and evaluates sentiment.
+    Scrapes Google News RSS for stock headlines, filters for last 3 days,
+    applies time-decay weighting based on age, and evaluates sentiment.
     """
     query = f"{ticker_name} stock OR {ticker_symbol} share price"
     encoded_query = urllib.parse.quote(query)
@@ -161,8 +165,10 @@ def scrape_stock_news(ticker_name, ticker_symbol, limit=8):
             root = ET.fromstring(response.content)
             items = root.findall('.//item')[:limit]
             
-            total_score = 0.0
-            scored_count = 0
+            weighted_sentiment_sum = 0.0
+            total_weight = 0.0
+            
+            now_dt = datetime.datetime.now(datetime.timezone.utc)
             
             for item in items:
                 title = item.find('title').text
@@ -170,7 +176,18 @@ def scrape_stock_news(ticker_name, ticker_symbol, limit=8):
                 pub_date = item.find('pubDate').text
                 source = item.find('source').text if item.find('source') is not None else "Google News"
                 
-                # Strip out source name usually attached to headline (e.g. "... - Moneycontrol")
+                # Parse publication date and calculate age in hours
+                try:
+                    pub_dt = parsedate_to_datetime(pub_date)
+                    age_hours = (now_dt - pub_dt).total_seconds() / 3600.0
+                except Exception:
+                    age_hours = 0.0
+                
+                # FILTER: Only keep articles from the last 3 days (72 hours)
+                if age_hours > 72.0:
+                    continue
+                
+                # Strip out source name
                 clean_title = re.sub(r'\s+-\s+[^(-]+$', '', title).strip()
                 
                 score, engine = analyze_headline_sentiment(clean_title)
@@ -182,20 +199,25 @@ def scrape_stock_news(ticker_name, ticker_symbol, limit=8):
                     label = "Negative"
                 else:
                     label = "Neutral"
-                    
+                
+                # Calculate time decay weight: linear decay from 1.0 (0 hrs) to 0.1 (72 hrs)
+                weight = max(0.1, 1.0 - (age_hours / 72.0))
+                
                 news_items.append({
                     "title": clean_title,
                     "link": link,
                     "pubDate": pub_date,
                     "source": source,
                     "score": round(score, 3),
-                    "label": label
+                    "label": label,
+                    "weight": round(weight, 2),
+                    "age_hours": round(age_hours, 1)
                 })
                 
-                total_score += score
-                scored_count += 1
+                weighted_sentiment_sum += score * weight
+                total_weight += weight
                 
-            avg_sentiment = total_score / scored_count if scored_count > 0 else 0.0
+            avg_sentiment = weighted_sentiment_sum / total_weight if total_weight > 0 else 0.0
             
             return {
                 "news": news_items,
@@ -205,7 +227,6 @@ def scrape_stock_news(ticker_name, ticker_symbol, limit=8):
     except Exception as e:
         logger.error(f"Error scraping news for {ticker_symbol}: {e}")
         
-    # Return empty fallback
     return {
         "news": [],
         "avg_sentiment": 0.0,

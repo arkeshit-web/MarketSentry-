@@ -10,6 +10,7 @@ import numpy as np
 import datetime
 import os
 import json
+import time
 
 from database import init_db, save_stock_to_cache, get_cached_stocks, get_cached_stock_detail, set_metadata, get_metadata
 from ml_model import train_prediction_model, get_features_and_target
@@ -95,6 +96,19 @@ sync_status = {
     "last_synced_at": ""
 }
 
+def background_sync_scheduler():
+    """Asynchronous background loop that updates Nifty 50 database cache every 10 minutes."""
+    # Settle down for 30s after startup
+    time.sleep(30)
+    while True:
+        logger.info("Scheduler loop: Triggering automatic real-time sync for Nifty 50...")
+        try:
+            run_sync_pipeline()
+        except Exception as e:
+            logger.error(f"Error in scheduler sync: {e}")
+        # Sleep for 10 minutes
+        time.sleep(600)
+
 @app.on_event("startup")
 def startup_event():
     init_db()
@@ -107,6 +121,9 @@ def startup_event():
         # Seed done
     else:
         logger.info(f"Database contains {len(cached)} cached stocks. Ready.")
+        
+    # Start the 10-minute autonomic live sync loop
+    threading.Thread(target=background_sync_scheduler, daemon=True).start()
 
 def seed_initial_database():
     """Seeds database with placeholder values so dashboard loads immediately on first run."""
@@ -369,6 +386,63 @@ def get_market_status():
         },
         "vix": round(vix, 2) if vix else 14.50
     }
+
+@app.get("/api/stocks/{ticker}/intraday")
+def get_stock_intraday(ticker: str):
+    """
+    Returns intraday price metrics (2-minute intervals) for the current active day.
+    Falls back to previous day if closed, or a mock trend if yfinance is throttled.
+    """
+    ticker = ticker.upper()
+    if ticker not in NIFTY_50_STOCKS:
+        raise HTTPException(status_code=404, detail="Stock not found in Nifty 50 index.")
+        
+    try:
+        stock = yf.Ticker(ticker)
+        # Fetch 1-day history with 2-minute interval
+        df = stock.history(period="1d", interval="2m")
+        
+        # If weekend/holiday/market-closed, fall back to last active session
+        if df.empty:
+            df = stock.history(period="5d", interval="5m")
+            if not df.empty:
+                last_date = df.index[-1].date()
+                df = df[df.index.date == last_date]
+                
+        if df.empty:
+            raise Exception("No active data found")
+            
+        prices = df['Close'].round(2).tolist()
+        times = [t.strftime("%H:%M") for t in df.index]
+        
+        is_up = prices[-1] >= prices[0] if len(prices) > 1 else True
+        change_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0.0
+        
+        return {
+            "ticker": ticker,
+            "prices": prices,
+            "times": times,
+            "current_price": prices[-1],
+            "change_pct": round(change_pct, 2),
+            "is_up": is_up,
+            "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
+            "fallback": False
+        }
+    except Exception as e:
+        logger.warning(f"Failed to fetch live intraday for {ticker}: {e}. Serving safe fallback.")
+        # Return fallback pattern so frontend chart is always stable
+        mock_prices = [round(1800 + x * 1.5 + (x % 4 * 3), 2) for x in range(35)]
+        mock_times = [f"{9 + (x // 12):02d}:{(x % 12) * 5:02d}" for x in range(35)]
+        return {
+            "ticker": ticker,
+            "prices": mock_prices,
+            "times": mock_times,
+            "current_price": mock_prices[-1],
+            "change_pct": 0.35,
+            "is_up": True,
+            "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
+            "fallback": True
+        }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
