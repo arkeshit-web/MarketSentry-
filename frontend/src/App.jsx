@@ -3,7 +3,7 @@ import Dashboard from './components/Dashboard';
 import StockDetails from './components/StockDetails';
 import { ShieldAlert, AlertCircle, RefreshCw } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
 export default function App() {
   const [stocks, setStocks] = useState([]);
