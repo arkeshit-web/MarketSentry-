@@ -74,7 +74,7 @@ export default function Dashboard({
   return (
     <div className="animate-fade-in" style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px 80px 20px' }}>
       {/* Header Panel */}
-      <div className="glass-panel glass-panel-glow dashboard-header" style={{ marginBottom: 24 }}>
+      <div className="glass-panel glass-panel-glow" style={{ padding: '24px 30px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 20 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #ffffff 30%, var(--color-text-secondary) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -142,7 +142,7 @@ export default function Dashboard({
       </div>
 
       {/* Sync Control & Data Info */}
-      <div className="glass-panel sync-control-panel" style={{ marginBottom: 24 }}>
+      <div className="glass-panel" style={{ padding: '16px 24px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
             Last Database Sync: <strong style={{ color: 'var(--color-text-primary)' }}>{lastSync} IST</strong>
@@ -176,7 +176,7 @@ export default function Dashboard({
       </div>
 
       {/* Search and Filters Toolbar */}
-      <div className="toolbar-container">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 300px' }}>
           <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
@@ -191,7 +191,7 @@ export default function Dashboard({
         </div>
 
         {/* Score Category Filter */}
-        <div className="filter-button-group">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button 
             className={`glass-btn ${scoreFilter === 'all' ? 'glass-btn-primary' : ''}`}
             onClick={() => setScoreFilter('all')}
@@ -252,7 +252,7 @@ export default function Dashboard({
               <th onClick={() => requestSort('change_pct')} style={{ padding: '16px 20px', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }}>
                 24h Change {sortField === 'change_pct' && (sortAsc ? '▲' : '▼')}
               </th>
-              <th className="hide-mobile" style={{ padding: '16px 20px', textAlign: 'center' }}>
+              <th style={{ padding: '16px 20px', textAlign: 'center' }}>
                 Last 15 Days Trend
               </th>
               <th onClick={() => requestSort('score')} style={{ padding: '16px 24px', cursor: 'pointer', userSelect: 'none', textAlign: 'center' }}>
@@ -295,7 +295,7 @@ export default function Dashboard({
                   </td>
                   
                   {/* Sparkline */}
-                  <td className="hide-mobile" style={{ padding: '12px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <td style={{ padding: '12px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <Sparkline prices={stock.history} />
                   </td>
                   
@@ -304,7 +304,7 @@ export default function Dashboard({
                     <span className={`score-badge ${getScoreClass(stock.score)}`} style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
                       <Award size={14} style={{ marginRight: 2 }} />
                       {stock.score}
-                      <span className="hide-mobile-inline" style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8, marginLeft: 4 }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8, marginLeft: 4 }}>
                         ({getScoreLabel(stock.score)})
                       </span>
                     </span>
