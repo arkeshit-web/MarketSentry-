@@ -42,7 +42,10 @@ def get_features_and_target(ticker_symbol, period="1y"):
     stock = yf.Ticker(ticker_symbol)
     df = stock.history(period=period)
     
-    if len(df) < 50:
+    if df is not None and not df.empty:
+        df = df.dropna(subset=['Close'])
+        
+    if df is None or len(df) < 50:
         # Fallback if too little data
         return None, None, None
         

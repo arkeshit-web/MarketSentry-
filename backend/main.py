@@ -13,6 +13,7 @@ import os
 import json
 import time
 import traceback
+import math
 
 from database import init_db, save_stock_to_cache, get_cached_stocks, get_cached_stock_detail, set_metadata, get_metadata
 from ml_model import train_prediction_model, get_features_and_target
@@ -45,6 +46,19 @@ async def global_exception_handler(request, exc):
             "traceback": tb_str
         }
     )
+
+def sanitize_json_data(data):
+    """Recursively converts NaN, Infinity, and -Infinity values in nested structures to None/null for JSON compatibility."""
+    if isinstance(data, dict):
+        return {k: sanitize_json_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_json_data(x) for x in data]
+    elif isinstance(data, float):
+        if math.isnan(data) or math.isinf(data):
+            return None
+        return data
+    else:
+        return data
 
 # Nifty 50 stocks mapping
 NIFTY_50_STOCKS = {
@@ -330,7 +344,7 @@ def get_stocks():
     """Returns cached list of stocks for main dashboard."""
     stocks = get_cached_stocks()
     last_sync = get_metadata("last_sync_time", "Never")
-    return {
+    return sanitize_json_data({
         "stocks": stocks,
         "last_sync": last_sync,
         "sync_status": {
@@ -338,7 +352,7 @@ def get_stocks():
             "progress": sync_status["progress"],
             "total": sync_status["total"]
         }
-    }
+    })
 
 @app.get("/api/stocks/{ticker}")
 def get_stock_detail(ticker: str):
@@ -359,7 +373,7 @@ def get_stock_detail(ticker: str):
     if not cached_detail:
         raise HTTPException(status_code=500, detail="Failed to fetch stock details.")
         
-    return cached_detail
+    return sanitize_json_data(cached_detail)
 
 @app.post("/api/stocks/sync")
 def trigger_sync(background_tasks: BackgroundTasks):
@@ -373,7 +387,7 @@ def trigger_sync(background_tasks: BackgroundTasks):
 @app.get("/api/sync/status")
 def get_sync_status():
     """Returns the progress of the background synchronization."""
-    return sync_status
+    return sanitize_json_data(sync_status)
 
 @app.get("/api/market-status")
 def get_market_status():
@@ -387,20 +401,22 @@ def get_market_status():
         # Fetch Nifty 50 index info (^NSEI)
         nifty = yf.Ticker("^NSEI")
         nifty_df = nifty.history(period="5d")
-        if not nifty_df.empty:
+        if nifty_df is not None and not nifty_df.empty:
+            nifty_df = nifty_df.dropna(subset=['Close'])
+        if nifty_df is not None and not nifty_df.empty:
             nifty_price = float(nifty_df['Close'].iloc[-1])
             prev_nifty = float(nifty_df['Close'].iloc[-2]) if len(nifty_df) > 1 else nifty_price
             nifty_change = float(((nifty_price - prev_nifty) / prev_nifty) * 100)
     except Exception as e:
         logger.error(f"Error fetching Nifty 50 index status: {e}")
         
-    return {
+    return sanitize_json_data({
         "nifty": {
-            "price": round(nifty_price, 2),
-            "change_pct": round(nifty_change, 2)
+            "price": round(nifty_price, 2) if not np.isnan(nifty_price) else 23500.0,
+            "change_pct": round(nifty_change, 2) if not np.isnan(nifty_change) else 0.0
         },
-        "vix": round(vix, 2) if vix else 14.50
-    }
+        "vix": round(vix, 2) if (vix and not np.isnan(vix)) else 14.50
+    })
 
 @app.get("/api/stocks/{ticker}/intraday")
 def get_stock_intraday(ticker: str):
@@ -418,13 +434,16 @@ def get_stock_intraday(ticker: str):
         df = stock.history(period="1d", interval="2m")
         
         # If weekend/holiday/market-closed, fall back to last active session
-        if df.empty:
+        if df is None or df.empty:
             df = stock.history(period="5d", interval="5m")
-            if not df.empty:
+            if df is not None and not df.empty:
                 last_date = df.index[-1].date()
                 df = df[df.index.date == last_date]
                 
-        if df.empty:
+        if df is not None and not df.empty:
+            df = df.dropna(subset=['Close'])
+            
+        if df is None or df.empty:
             raise Exception("No active data found")
             
         prices = df['Close'].round(2).tolist()
@@ -433,7 +452,7 @@ def get_stock_intraday(ticker: str):
         is_up = prices[-1] >= prices[0] if len(prices) > 1 else True
         change_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0.0
         
-        return {
+        return sanitize_json_data({
             "ticker": ticker,
             "prices": prices,
             "times": times,
@@ -442,13 +461,13 @@ def get_stock_intraday(ticker: str):
             "is_up": is_up,
             "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
             "fallback": False
-        }
+        })
     except Exception as e:
         logger.warning(f"Failed to fetch live intraday for {ticker}: {e}. Serving safe fallback.")
         # Return fallback pattern so frontend chart is always stable
         mock_prices = [round(1800 + x * 1.5 + (x % 4 * 3), 2) for x in range(35)]
         mock_times = [f"{9 + (x // 12):02d}:{(x % 12) * 5:02d}" for x in range(35)]
-        return {
+        return sanitize_json_data({
             "ticker": ticker,
             "prices": mock_prices,
             "times": mock_times,
@@ -457,7 +476,7 @@ def get_stock_intraday(ticker: str):
             "is_up": True,
             "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
             "fallback": True
-        }
+        })
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
