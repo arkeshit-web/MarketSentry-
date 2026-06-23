@@ -1,0 +1,46 @@
+name: Deploy Backend to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_NAME: ${{ secrets.HF_SPACE_NAME }} # e.g., arkeshit-web/MarketSentry-API
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "Error: HF_TOKEN is not set. Add it in GitHub repository Secrets."
+            exit 1
+          fi
+          
+          if [ -z "$HF_SPACE_NAME" ]; then
+            echo "Error: HF_SPACE_NAME is not set. Add it in GitHub repository Secrets."
+            exit 1
+          fi
+
+          git config --global user.email "arkesh.it@gmail.com"
+          git config --global user.name "arkeshit-web"
+          
+          # Navigate to backend directory containing the Dockerfile
+          cd backend
+          
+          # Initialize temporary git to push only the backend folder contents
+          git init
+          git add .
+          git commit -m "Deploy version 2.0 to Hugging Face Spaces"
+          
+          # Push to the Hugging Face Space git remote using HTTPS authentication
+          git push -f "https://arkeshit-web:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_NAME" master:main
