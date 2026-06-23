@@ -224,3 +224,91 @@ body {
   letter-spacing: 0.15em;
   font-size: 1.45rem;
 }
+
+/* Mobile Responsive Overrides (Keeps PC layout untouched) */
+@media (max-width: 768px) {
+  .analytics-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  .chart-panel-span {
+    grid-column: span 1 !important;
+  }
+  
+  .news-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Hide columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  .hide-mobile-inline {
+    display: none !important;
+  }
+  
+  /* Header Panel mobile styling */
+  .dashboard-header {
+    flex-direction: column !important;
+    text-align: center !important;
+    padding: 20px !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+  .dashboard-header > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  /* Sync Control Panel mobile styling */
+  .sync-control-panel {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+  
+  /* Toolbar controls on mobile */
+  .toolbar-container {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+  .toolbar-container > div {
+    width: 100% !important;
+  }
+  
+  .filter-button-group {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  
+  .filter-button-group button {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+  }
+  
+  /* Stock Summary Card mobile styling */
+  .stock-summary-card {
+    flex-direction: column !important;
+    text-align: center !important;
+    padding: 20px !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+  .stock-summary-card > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+}
+

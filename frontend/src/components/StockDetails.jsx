@@ -467,7 +467,7 @@ export default function StockDetails({ ticker, name, price, changePct, detail, i
       </button>
 
       {/* Main Stock Summary Card */}
-      <div className="glass-panel" style={{ padding: '24px 30px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
+      <div className="glass-panel stock-summary-card" style={{ padding: '24px 30px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <h1 style={{ fontSize: '2.25rem', fontWeight: 800 }}>{ticker.replace('.NS', '')}</h1>
@@ -496,7 +496,7 @@ export default function StockDetails({ ticker, name, price, changePct, detail, i
       </div>
 
       {/* Analytics Breakdown Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
         
         {/* 1. Technical Analysis Module */}
         <div className="glass-panel" style={{ padding: 24 }}>
@@ -618,9 +618,9 @@ export default function StockDetails({ ticker, name, price, changePct, detail, i
       </div>
 
       {/* Volatility & Historical Price Chart Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
         {/* Tabbed Price Charts (Intraday Live vs Historical) */}
-        <div className="glass-panel" style={{ padding: 24, gridColumn: 'span 2' }}>
+        <div className="glass-panel chart-panel-span" style={{ padding: 24, gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Activity size={18} style={{ color: 'var(--color-accent)' }} />
@@ -780,7 +780,7 @@ export default function StockDetails({ ticker, name, price, changePct, detail, i
         </div>
 
         {/* News Feed Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 16 }}>
+        <div className="news-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 16 }}>
           {news.filter(item => showNeutralNews || item.label !== 'Neutral').length > 0 ? (
             news.filter(item => showNeutralNews || item.label !== 'Neutral').map((item, i) => (
               <a 
