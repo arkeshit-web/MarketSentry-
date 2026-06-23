@@ -16,11 +16,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /code/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create cache directory with read/write permissions for serverless execution
-RUN mkdir -p /code/.cache && chmod -R 777 /code/.cache
-
 # Copy application files
 COPY . /code/
+
+# Create cache directory and database file, then set permissions for non-root user (UID 1000)
+RUN mkdir -p /code/.cache && \
+    touch /code/marketsentry.db && \
+    chmod -R 777 /code && \
+    chown -R 1000:1000 /code
+
+# Run as non-root user 1000
+USER 1000
 
 # Hugging Face Spaces requires the container to bind to port 7860
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]

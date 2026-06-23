@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import logging
@@ -11,6 +12,7 @@ import datetime
 import os
 import json
 import time
+import traceback
 
 from database import init_db, save_stock_to_cache, get_cached_stocks, get_cached_stock_detail, set_metadata, get_metadata
 from ml_model import train_prediction_model, get_features_and_target
@@ -30,6 +32,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    tb_str = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "message": str(exc),
+            "traceback": tb_str
+        }
+    )
 
 # Nifty 50 stocks mapping
 NIFTY_50_STOCKS = {
