@@ -427,22 +427,22 @@ def get_stock_intraday(ticker: str):
     ticker = ticker.upper()
     if ticker not in NIFTY_50_STOCKS:
         raise HTTPException(status_code=404, detail="Stock not found in Nifty 50 index.")
+        
     try:
         stock = yf.Ticker(ticker)
-        # Fetch 2-day history with 2-minute interval (1-day fails for international symbols)
-        df = stock.history(period="2d", interval="2m")
+        # Fetch 1-day history with 2-minute interval
+        df = stock.history(period="1d", interval="2m")
         
-        # If empty (weekend/holiday/market-closed), fall back to 5-day history
+        # If weekend/holiday/market-closed, fall back to last active session
         if df is None or df.empty:
             df = stock.history(period="5d", interval="5m")
-            
-        if df is not None and not df.empty:
-            df = df.dropna(subset=['Close'])
-            if not df.empty:
-                # Filter to only keep the last active trading day's data
+            if df is not None and not df.empty:
                 last_date = df.index[-1].date()
                 df = df[df.index.date == last_date]
                 
+        if df is not None and not df.empty:
+            df = df.dropna(subset=['Close'])
+            
         if df is None or df.empty:
             raise Exception("No active data found")
             
