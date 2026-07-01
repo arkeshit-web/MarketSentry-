@@ -391,7 +391,7 @@ def trigger_sync(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_sync_pipeline)
     return {"message": "Sync started in background.", "status": sync_status}
 
-@app.get("/api/sync/status")
+@app.api_route("/api/sync/status", methods=["GET", "HEAD"])
 def get_sync_status():
     """Returns the progress of the background synchronization."""
     return sanitize_json_data(sync_status)
