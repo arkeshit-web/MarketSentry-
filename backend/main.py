@@ -60,6 +60,13 @@ def sanitize_json_data(data):
     else:
         return data
 
+def get_current_ist_time():
+    """Returns the current datetime in Indian Standard Time (IST)."""
+    # Hugging Face runs in UTC/GMT, so we add 5 hours and 30 minutes to UTC time
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
+    return ist_now
+
 # Nifty 50 stocks mapping
 NIFTY_50_STOCKS = {
     "RELIANCE.NS": "Reliance Industries Ltd.",
@@ -156,7 +163,7 @@ def startup_event():
 
 def seed_initial_database():
     """Seeds database with placeholder values so dashboard loads immediately on first run."""
-    init_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    init_time = get_current_ist_time().strftime("%Y-%m-%d %H:%M:%S")
     for index, (ticker, name) in enumerate(NIFTY_50_STOCKS.items()):
         # Generate semi-random initial scores and mock sparkline data
         base_score = 50 + (index % 30) - (index % 15)
@@ -328,7 +335,7 @@ def run_sync_pipeline():
                 
                 sync_status["progress"] += 1
                 
-        sync_status["last_synced_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sync_status["last_synced_at"] = get_current_ist_time().strftime("%Y-%m-%d %H:%M:%S")
         set_metadata("last_sync_time", sync_status["last_synced_at"])
         logger.info(f"Sync complete. Successfully updated {success_count}/{len(NIFTY_50_STOCKS)} stocks.")
     except Exception as e:
@@ -459,7 +466,7 @@ def get_stock_intraday(ticker: str):
             "current_price": prices[-1],
             "change_pct": round(change_pct, 2),
             "is_up": is_up,
-            "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
+            "last_updated": get_current_ist_time().strftime("%H:%M:%S"),
             "fallback": False
         })
     except Exception as e:
@@ -474,7 +481,7 @@ def get_stock_intraday(ticker: str):
             "current_price": mock_prices[-1],
             "change_pct": 0.35,
             "is_up": True,
-            "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
+            "last_updated": get_current_ist_time().strftime("%H:%M:%S"),
             "fallback": True
         })
 
