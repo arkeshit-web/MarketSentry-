@@ -1,0 +1,25 @@
+name: Keep Hugging Face Backend Awake
+
+on:
+  schedule:
+    # Runs every 4 hours (Hugging Face sleeps after 48 hours of inactivity)
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Hugging Face Space API
+        run: |
+          echo "Pinging Hugging Face Space backend..."
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+            "https://arkesh06-marketsentry-api.hf.space/api/sync/status")
+          
+          echo "HTTP Response Status Code: $RESPONSE_CODE"
+          if [ "$RESPONSE_CODE" -eq 200 ]; then
+            echo "Successfully pinged backend. Hugging Face Space is active!"
+          else
+            echo "Warning: Backend responded with HTTP status $RESPONSE_CODE"
+          fi
