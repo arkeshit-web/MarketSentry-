@@ -28,8 +28,8 @@ RUN mkdir -p /code/.cache && \
 # Run as non-root user 1000
 USER 1000
 
-# Dynamic port support (Render uses $PORT or 10000, Hugging Face uses 7860)
-ENV PORT=10000
-EXPOSE 10000
+# Dynamic port support: Hugging Face strictly requires 7860; Render passes its own $PORT
+ENV PORT=7860
+EXPOSE 7860
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]
