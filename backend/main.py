@@ -132,6 +132,10 @@ sync_status = {
     "last_synced_at": ""
 }
 
+# In-memory fast caches to minimize external HTTP overhead on Render
+_market_status_cache = {"data": None, "timestamp": 0}
+_intraday_cache = {}  # ticker -> {"data": ..., "timestamp": ...}
+
 def background_sync_scheduler():
     """Asynchronous background loop that updates Nifty 50 database cache every 10 minutes."""
     # Settle down for 30s after startup
@@ -317,7 +321,7 @@ def run_sync_pipeline():
             
         success_count = 0
         # Use ThreadPoolExecutor to fetch 5 stocks concurrently
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             future_to_ticker = {
                 executor.submit(update_single_stock, ticker, name, vix_val): ticker 
                 for ticker, name in NIFTY_50_STOCKS.items()
@@ -398,7 +402,10 @@ def get_sync_status():
 
 @app.get("/api/market-status")
 def get_market_status():
-    """Returns general Nifty 50 index status and India VIX."""
+    """Returns general Nifty 50 index status and India VIX with a 60s cache."""
+    now = time.time()
+    if _market_status_cache["data"] and (now - _market_status_cache["timestamp"] < 60):
+        return _market_status_cache["data"]
     vix = get_vix_value()
     
     nifty_price = 23500.0
@@ -417,13 +424,16 @@ def get_market_status():
     except Exception as e:
         logger.error(f"Error fetching Nifty 50 index status: {e}")
         
-    return sanitize_json_data({
+    res = sanitize_json_data({
         "nifty": {
             "price": round(nifty_price, 2) if not np.isnan(nifty_price) else 23500.0,
             "change_pct": round(nifty_change, 2) if not np.isnan(nifty_change) else 0.0
         },
         "vix": round(vix, 2) if (vix and not np.isnan(vix)) else 14.50
     })
+    _market_status_cache["data"] = res
+    _market_status_cache["timestamp"] = now
+    return res
 
 @app.get("/api/stocks/{ticker}/intraday")
 def get_stock_intraday(ticker: str):
@@ -434,6 +444,10 @@ def get_stock_intraday(ticker: str):
     ticker = ticker.upper()
     if ticker not in NIFTY_50_STOCKS:
         raise HTTPException(status_code=404, detail="Stock not found in Nifty 50 index.")
+        
+    now = time.time()
+    if ticker in _intraday_cache and (now - _intraday_cache[ticker]["timestamp"] < 60):
+        return _intraday_cache[ticker]["data"]
         
     try:
         stock = yf.Ticker(ticker)
@@ -459,7 +473,7 @@ def get_stock_intraday(ticker: str):
         is_up = prices[-1] >= prices[0] if len(prices) > 1 else True
         change_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0.0
         
-        return sanitize_json_data({
+        result = sanitize_json_data({
             "ticker": ticker,
             "prices": prices,
             "times": times,
@@ -469,6 +483,8 @@ def get_stock_intraday(ticker: str):
             "last_updated": get_current_ist_time().strftime("%H:%M:%S"),
             "fallback": False
         })
+        _intraday_cache[ticker] = {"data": result, "timestamp": now}
+        return result
     except Exception as e:
         logger.warning(f"Failed to fetch live intraday for {ticker}: {e}. Serving safe fallback.")
         # Return fallback pattern so frontend chart is always stable
