@@ -3,7 +3,10 @@ import Dashboard from './components/Dashboard';
 import StockDetails from './components/StockDetails';
 import { ShieldAlert, AlertCircle, RefreshCw } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const RAW_API = import.meta.env.VITE_API_URL;
+const API_BASE = (RAW_API && !RAW_API.includes('onrender.com'))
+  ? RAW_API
+  : (import.meta.env.PROD ? 'https://arkesh06-marketsentry-api.hf.space/api' : 'http://127.0.0.1:8000/api');
 
 export default function App() {
   const [stocks, setStocks] = useState([]);
